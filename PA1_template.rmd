@@ -1,0 +1,90 @@
+---
+title: "Project1"
+author: "Stuart Jones"
+date: "March 22, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data1<-read.csv("activity.csv")
+data1[,2] <- as.Date(data1[,2],"%m/%d/%Y")
+```
+
+First, we calculate the total number of steps taken per day and create a histogram of this data. Next, we calculate and report the mean and median of the total number of steps taken per day.
+
+```{r}
+steps_per_day <- tapply(data1[,1],data1[,2],sum)
+steps_per_day <- as.numeric(steps_per_day)
+hist(steps_per_day)
+mean(steps_per_day,na.rm=T) #mean steps per day
+median(steps_per_day,na.rm=T) #median steps per day
+```
+Next, we are going to create a time series plot of the 5-minute interval and the average number of steps taken. Along with this, we will give the maximum time during the day where the most number of steps is taken, on average each day.
+
+```{r}
+data2 <- data1[complete.cases(data1),]
+mysplit <- split(data2[,1],data2[,3])
+mysplit2 <-   sapply(mysplit,mean)
+x=unique(data2[,3])
+plot(x=x,y=mysplit2,type="l", xlab="5-min interval", ylab="# of steps")
+grid(nx=50,ny=50,col="lightgray",lty="solid")
+x[[which(mysplit2==max(mysplit2))]] #Time in the day where maximum steps occur
+max(mysplit2) #number of steps at maximum
+
+```
+
+Next, we turn our attention to NA values. First, we calculate the total number of missing values. Then, we fill each NA value with its mean for that day. We use this to make a new dataset, which we show a histogram for and give the mean and median. 
+
+```{r}
+totalNA <- sum(!complete.cases(data1))
+ totalNA #shows the total number of NAs
+ 
+ data3 <- data1
+ for(i in 1:nrow(data1)) {
+  if (is.na(data1[i,1])){
+    data3[i,1] <- mysplit2[as.character(data1[i,3])]
+    } 
+ }
+ sum(!complete.cases(data3))
+
+ mysplit3 <- split(data3[,1],data3[,2])
+ mysplit4 <-   sapply(mysplit3,sum)
+ hist(mysplit4, xlab="avg steps per day", ylab="frequency")
+mean(mysplit4)
+median(mysplit4)
+```
+In our case, imputing the values did very little to change our mean or median, which makes sense based on the method used.
+
+Finally, we turn our attention to weekdays versus weekends. Are there differences in activity patterns between weekdays and weekends? 
+
+```{r}
+# This for loop creates a factor variable called "weekendOrNo" and assigns a value of "1" if it is a weekend day or "0" if it is not a weekend day.
+weekendOrNo <- c() 
+  for(i in 1:nrow(data3)){
+ if (weekdays(data3[i,2],abbreviate=F)=="Saturday" | weekdays(data3[i,2],abbreviate=F)=="Sunday"){
+  weekendOrNo <- c(weekendOrNo,1)
+ } else {
+  weekendOrNo <- c(weekendOrNo,0)
+ }
+  }
+#This segment of code combines the factor variable above into the data set, then splits it based on interval time. The mean is calculated and the resulting vector is multiplied by 16 (the number of weekend days) and 45 (the number of weekdays) simply so the length can match of x-variable in a moment.
+data4 <- cbind(data3,weekendOrNo)
+mysplit_weekend <- split(data4[,1],data4[,3])
+mysplit_weekend2 <-   sapply(mysplit_weekend,mean)
+mysplit_weekend3 <- rep(mysplit_weekend2,times=16) #number of weekend days
+mysplit_weekend4 <-rep(mysplit_weekend2,times=45) # number of week days
+
+#This final segment creates two variables x_weekend and x_week that gives the interval on weekdays or weekends, respectively. Then, two graphs are created showing the results.
+x_weekend<-data3[which(weekdays(data3[,2],abbreviate=F)=="Saturday" | weekdays(data3[,2],abbreviate=F)=="Sunday"),3]
+x_week<-data3[which(!(weekdays(data3[,2],abbreviate=F)=="Saturday" | weekdays(data3[,2],abbreviate=F)=="Sunday")),3]
+par(mfrow=c(2,1))
+plot(x=x_week,y=mysplit_weekend4,type="l", xlab="5-min interval week", ylab="# of steps")
+grid(nx=50,ny=50,col="lightgray",lty="solid")
+plot(x=x_weekend,y=mysplit_weekend3,type="l", xlab="5-min interval weekend", ylab="# of steps")
+grid(nx=50,ny=50,col="lightgray",lty="solid") 
+```
+The graphs are not significantly different from one another. 
